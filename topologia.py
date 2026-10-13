@@ -1,4 +1,4 @@
-mport sys
+import sys
 from time import sleep
 from mininet.net import Mininet
 from mininet.node import RemoteController, OVSKernelSwitch
