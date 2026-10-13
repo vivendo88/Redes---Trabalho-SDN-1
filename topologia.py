@@ -1,0 +1,55 @@
+mport sys
+from time import sleep
+from mininet.net import Mininet
+from mininet.node import RemoteController, OVSKernelSwitch
+from mininet.cli import CLI
+from mininet.log import setLogLevel
+
+def start_network(edge_list_file):
+    net = Mininet(controller=RemoteController, switch=OVSKernelSwitch)
+    c0 = net.addController('c0', port=6633)
+
+    switches = {}
+    hosts = {}
+
+    # Leitura e parsing do arquivo de arestas
+    with open(edge_list_file, 'r') as f:
+        for line in f:
+            parts = line.strip().split()
+            if len(parts) >= 2:
+                s_orig, s_dest = parts[0], parts[1]
+
+                # Instancia os switches caso ainda não existam
+                for s_name in (s_orig, s_dest):
+                    if s_name not in switches:
+                        # Adiciona o switch
+                        sw = net.addSwitch(s_name)
+                        switches[s_name] = sw
+                        
+                        # Adiciona um host conectado a este switch (ex: s1 -> h1)
+                        h_name = 'h' + s_name.lstrip('s')
+                        host = net.addHost(h_name)
+                        hosts[h_name] = host
+                        net.addLink(host, sw)
+
+                # Cria o enlace entre os dois switches
+                net.addLink(switches[s_orig], switches[s_dest])
+
+    net.start()
+    print("Aguardando inicialização do controlador...")
+    sleep(3)
+
+    print("Enviando Gratuitous ARP de todos os hosts para descoberta pelo Ryu...")
+    for h in net.hosts:
+        h.cmd('arping -U -c 1 ' + h.IP())
+        sleep(0.1)
+
+    CLI(net)
+    net.stop()
+
+if __name__ == '__main__':
+    setLogLevel('info')
+    if len(sys.argv) > 1:
+        start_network(sys.argv[1])
+    else:
+        print("Uso: sudo python teste_topologia.py <arquivo_topologia.txt>")
