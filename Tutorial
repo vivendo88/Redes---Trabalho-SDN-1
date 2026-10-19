@@ -1,3 +1,6 @@
 Necessidade de instalação 
 
 pip3 install --user networkx matplotlib
+
+Rodar o ryu 
+ ryu-manager --observe-links topo_discover.py
