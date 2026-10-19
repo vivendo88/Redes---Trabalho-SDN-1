@@ -41,7 +41,18 @@ class TopoDiscover(app_manager.RyuApp):
     def _event_switch_enter_handler(self, ev):
         switch_list = get_switch(self.topology_api_app, None)
         self.switches = [switch.dp.id for switch in switch_list]
+        # Remove hosts de switches que não estão mais ativos
+        self.hosts = {ip: info for ip, info in self.hosts.items() if info['dpid'] in self.switches}
         self.logger.info("Switches mapeados atualmente: %s", self.switches)
+
+    @set_ev_cls(event.EventSwitchLeave)
+    def _event_switch_leave_handler(self, ev):
+        switch_list = get_switch(self.topology_api_app, None)
+        self.switches = [switch.dp.id for switch in switch_list]
+        link_list = get_link(self.topology_api_app, None)
+        self.links = [(link.src.dpid, link.dst.dpid, link.src.port_no, link.dst.port_no) for link in link_list]
+        # Limpa os hosts associados a switches que saíram da topologia
+        self.hosts = {ip: info for ip, info in self.hosts.items() if info['dpid'] in self.switches}
 
     @set_ev_cls(event.EventLinkAdd)
     def _event_link_add_handler(self, ev):
@@ -62,6 +73,12 @@ class TopoDiscover(app_manager.RyuApp):
             self.logger.info("ARP recebido do IP %s, MAC %s no Switch %s, porta %s", 
                              arp_pkt.src_ip, arp_pkt.src_mac, datapath.id, in_port)
             
+            # Remove registros antigos na mesma porta do switch (caso a rede tenha sido reiniciada)
+            self.hosts = {
+                ip: info for ip, info in self.hosts.items()
+                if not (info['dpid'] == datapath.id and info['port'] == in_port) and info['dpid'] in self.switches
+            }
+            
             self.hosts[arp_pkt.src_ip] = {
                 'mac': arp_pkt.src_mac,
                 'dpid': datapath.id,
@@ -71,7 +88,15 @@ class TopoDiscover(app_manager.RyuApp):
             self.print_full_topology()
             self.salvar_grafo_descoberto()
             
-    def salvar_grafo_descoberto(self, nome_arquivo="topologia_descoberta.png"):
+    def salvar_grafo_descoberto(self, nome_arquivo=None):
+        if nome_arquivo is None:
+            if len(self.switches) == 3:
+                nome_arquivo = "topologia_triangulo_descoberta.png"
+            elif len(self.switches) == 6:
+                nome_arquivo = "topologia_someloops_descoberta.png"
+            else:
+                nome_arquivo = "topologia_descoberta.png"
+
         G = nx.Graph()
 
         # Adiciona switches
