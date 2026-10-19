@@ -1,6 +1,16 @@
-Necessidade de instalação 
+# Pré-requisitos e Instalação (em ambiente virtual .venv)
+./install.sh
 
-pip3 install --user networkx matplotlib
+# Ativar o ambiente virtual (.venv)
+source .venv/bin/activate
 
-Rodar o ryu 
- ryu-manager --observe-links topo_discover.py
+# Rodar o controlador Ryu (Terminal 1 - com a .venv ativada)
+ryu-manager --observe-links topo_discover.py
+
+# Rodar o Mininet (Terminal 2 - usa o Python do sistema onde o pacote mininet do apt está instalado)
+sudo python3 topologia.py topo_triangle.txt
+# ou:
+sudo python3 topologia.py topo_someloops.txt
+
+# Caso precise limpar a rede do Mininet entre execuções:
+sudo mn -c
