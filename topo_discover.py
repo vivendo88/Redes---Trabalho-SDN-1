@@ -1,3 +1,6 @@
+import networkx as nx
+import matplotlib.pyplot as plt
+
 from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER, set_ev_cls
@@ -66,7 +69,46 @@ class TopoDiscover(app_manager.RyuApp):
             }
             
             self.print_full_topology()
+            self.salvar_grafo_descoberto()
             
+    def salvar_grafo_descoberto(self, nome_arquivo="topologia_descoberta.png"):
+        G = nx.Graph()
+
+        # Adiciona switches
+        for dpid in self.switches:
+            G.add_node(f"s{dpid}", tipo='switch')
+
+        # Adiciona enlaces entre switches
+        for src_dpid, dst_dpid, _, _ in self.links:
+            G.add_edge(f"s{src_dpid}", f"s{dst_dpid}")
+
+        # Adiciona hosts e suas ligações aos switches
+        for ip, info in self.hosts.items():
+            host_label = f"Host\n{ip}"
+            sw_label = f"s{info['dpid']}"
+            G.add_node(host_label, tipo='host')
+            G.add_edge(host_label, sw_label)
+
+        # Define as cores dos nós
+        cores = ['lightblue' if G.nodes[n].get('tipo') == 'switch' else 'lightgreen' for n in G.nodes()]
+
+        # Layout e renderização
+        plt.figure(figsize=(8, 6))
+        pos = nx.spring_layout(G, seed=42)
+        nx.draw(
+            G, pos,
+            with_labels=True,
+            node_color=cores,
+            node_size=1000,
+            font_size=8,
+            font_weight='bold',
+            edge_color='gray'
+        )
+        plt.title("Topologia Descoberta (Ryu Controller)")
+        plt.savefig(nome_arquivo, bbox_inches='tight')
+        plt.close()
+        self.logger.info("Imagem do grafo salva em: %s", nome_arquivo)
+
     def print_full_topology(self):
         self.logger.info("\n" + "=" * 50)
         self.logger.info("           TOPOLOGIA COMPLETA MAPEADA            ")
