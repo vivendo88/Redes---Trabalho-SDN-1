@@ -6,7 +6,7 @@ from mininet.node import RemoteController, OVSKernelSwitch
 from mininet.cli import CLI
 from mininet.log import setLogLevel
 
-def start_network(edge_list_file):
+def start_network(edge_list_file, batch=False):
     # Configura os switches para utilizar a versão OpenFlow 1.3
     switch_of13 = partial(OVSKernelSwitch, protocols='OpenFlow13')
     net = Mininet(controller=RemoteController, switch=switch_of13)
@@ -50,12 +50,15 @@ def start_network(edge_list_file):
         h.cmd(f'arping -U -c 1 -I {iface} {h.IP()}')
         sleep(0.2)
 
-    CLI(net)
+    if batch:
+        sleep(2)
+    else:
+        CLI(net)
     net.stop()
 
 if __name__ == '__main__':
     setLogLevel('info')
     if len(sys.argv) > 1:
-        start_network(sys.argv[1])
+        start_network(sys.argv[1], batch=('--batch' in sys.argv))
     else:
         print("Uso: sudo python topologia.py <arquivo_topologia.txt>")

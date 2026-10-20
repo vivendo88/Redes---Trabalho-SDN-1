@@ -1,3 +1,4 @@
+import os
 import networkx as nx
 import matplotlib.pyplot as plt
 
@@ -90,7 +91,10 @@ class TopoDiscover(app_manager.RyuApp):
             
     def salvar_grafo_descoberto(self, nome_arquivo=None):
         if nome_arquivo is None:
-            if len(self.switches) == 3:
+            env_output = os.environ.get("TOPO_OUTPUT_PNG")
+            if env_output:
+                nome_arquivo = env_output
+            elif len(self.switches) == 3:
                 nome_arquivo = "topologia_triangulo_descoberta.png"
             elif len(self.switches) == 6:
                 nome_arquivo = "topologia_someloops_descoberta.png"
